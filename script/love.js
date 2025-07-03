@@ -39,7 +39,7 @@ function init() {
     ctx.font = "60px Arial";
     ctx.fillStyle = "lightblue";
     ctx.textAlign = "center";
-    ctx.fillText("Я БЕЗМЕЖНО КОХАЮ ТЕБЕ", width / 2, height / 2.2 + 400);
+    ctx.fillText("Я БЕЗМЕЖНО\nКОХАЮ ТЕБЕ", width / 2, height / 2.2 + 400);
   }
 
   function heartPosition(rad) {
