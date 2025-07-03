@@ -1,186 +1,193 @@
-window.requestAnimationFrame =
-  window.__requestAnimationFrame ||
-  window.requestAnimationFrame ||
-  window.webkitRequestAnimationFrame ||
-  window.mozRequestAnimationFrame ||
-  window.oRequestAnimationFrame ||
-  window.msRequestAnimationFrame ||
-  (function () {
-    return function (callback, element) {
-      var lastTime = element.__lastTime || 0;
-      var currTime = Date.now();
-      var timeToCall = Math.max(1, 33 - (currTime - lastTime));
-      window.setTimeout(callback, timeToCall);
-      element.__lastTime = currTime + timeToCall;
-    };
-  })();
-
-window.isDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-  (navigator.userAgent || navigator.vendor || window.opera).toLowerCase()
-);
-
-var loaded = false;
-
-function init() {
-  if (loaded) return;
-  loaded = true;
-  var mobile = window.isDevice;
-  var koef = mobile ? 0.5 : 1;
-  var canvas = document.getElementById("heart");
-  var ctx = canvas.getContext("2d");
-  var width = (canvas.width = (koef * innerWidth)/0.35);
-  var height = (canvas.height = (koef * innerHeight)/0.35);
-  var rand = Math.random;
-
-  ctx.fillStyle = "rgba(0,0,0,1)";
-  ctx.fillRect(0, 0, width, height);
-
-  function drawText() {
-    ctx.font = "60px Arial";
-    ctx.fillStyle = "lightblue";
-    ctx.textAlign = "center";
-    ctx.fillText("You're so pretty", width / 2, height / 2.2 + 400);
-  }
-
-  function heartPosition(rad) {
-    return [
-      Math.pow(Math.sin(rad), 3),
-      -(
-        15 * Math.cos(rad) -
-        5 * Math.cos(2 * rad) -
-        2 * Math.cos(3 * rad) -
-        Math.cos(4 * rad)
-      ),
-    ];
-  }
-
-  function scaleAndTranslate(pos, sx, sy, dx, dy) {
-    return [dx + pos[0] * sx, dy + pos[1] * sy];
-  }
-
-  window.addEventListener("resize", function () {
-    width = canvas.width = koef * innerWidth;
-    height = canvas.height = koef * innerHeight;
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.fillRect(0, 0, width, height);
-  });
-
-  var traceCount = mobile ? 20 : 50;
-  var pointsOrigin = [];
-  var dr = mobile ? 0.3 : 0.1;
-  for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 310, 19, 0, 0));
-  for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 250, 15, 0, 0));
-  for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 190, 11, 0, 0));
-
-  var heartPointsCount = pointsOrigin.length;
-  var targetPoints = [];
-
-  function pulse(kx, ky) {
-    for (var i = 0; i < pointsOrigin.length; i++) {
-      targetPoints[i] = [
-        kx * pointsOrigin[i][0] + width / 2,
-        ky * pointsOrigin[i][1] + height / 2.2,
-      ];
-    }
-  }
-
-  var e = [];
-  for (var i = 0; i < heartPointsCount; i++) {
-    var x = rand() * width;
-    var y = rand() * height;
-    e[i] = {
-      vx: 0,
-      vy: 0,
-      R: 2,
-      speed: rand() + 5,
-      q: ~~(rand() * heartPointsCount),
-      D: 2 * (i % 2) - 1,
-      force: 0.2 * rand() + 0.7,
-      f: "rgba(51, 204, 255, 0.7)",
-      trace: Array.from({ length: traceCount }, () => ({ x, y })),
-    };
-  }
-
-  var config = { traceK: 0.4, timeDelta: 0.6 };
-  var time = 0;
-
-  function loop() {
-    var n = -Math.cos(time);
-    pulse((1 + n) * 0.5, (1 + n) * 0.5);
-    time += (Math.sin(time) < 0 ? 9 : n > 0.8 ? 0.2 : 1) * config.timeDelta;
-
-    ctx.fillStyle = "rgba(0,0,0,.1)";
-    ctx.fillRect(0, 0, width, height);
-
-    for (var i = e.length; i--; ) {
-      var u = e[i];
-      var q = targetPoints[u.q];
-      var dx = u.trace[0].x - q[0];
-      var dy = u.trace[0].y - q[1];
-      var length = Math.sqrt(dx * dx + dy * dy);
-
-      if (length < 10) {
-        if (rand() > 0.95) {
-          u.q = ~~(rand() * heartPointsCount);
-        } else {
-          if (rand() > 0.99) u.D *= -1;
-          u.q = (u.q + u.D) % heartPointsCount;
-          if (u.q < 0) u.q += heartPointsCount;
-        }
-      }
-
-      u.vx += (-dx / length) * u.speed;
-      u.vy += (-dy / length) * u.speed;
-      u.trace[0].x += u.vx;
-      u.trace[0].y += u.vy;
-      u.vx *= u.force;
-      u.vy *= u.force;
-
-      for (var k = 0; k < u.trace.length - 1; k++) {
-        var T = u.trace[k];
-        var N = u.trace[k + 1];
-        N.x -= config.traceK * (N.x - T.x);
-        N.y -= config.traceK * (N.y - T.y);
-      }
-
-      ctx.fillStyle = u.f;
-      u.trace.forEach((t) => ctx.fillRect(t.x, t.y, 1, 1));
-    }
-
-    drawText();
-    window.requestAnimationFrame(loop, canvas);
-  }
-
-  loop();
-}
-
-function continueMusic() {
-  const music = document.getElementById("backgroundMusic");
-
-  const isMusicPlaying = localStorage.getItem("musicPlaying") === "true";
-  const musicCurrentTime = localStorage.getItem("musicCurrentTime") || 0;
-
-  if (music) {
-    if (isMusicPlaying) {
-      music.currentTime = parseFloat(musicCurrentTime);
-      music.play().catch((error) =>
-        console.log("Music playback failed", error)
-      );
-    }
-  }
-
-  document.addEventListener("click", function startMusic() {
-    if (music && !isMusicPlaying) {
-      music.play().catch((error) => console.log("Autoplay prevented", error));
-      document.removeEventListener("click", startMusic);
-    }
-  });
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  init();
-  continueMusic();
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
 });
+
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+    }
+});
+
+const messages = [
+"Клацни де завгодно",  
+"Слухай ❤️",  
+"Я хочу тобі дещо сказати",  
+"Спробуй натиснути",  
+"Натисни ще раз",  
+"Давай, не здавайся, клацай",  
+"Це останній раз, чесно",  
+"Серйозно",  
+"Це",  
+"Останній",    
+"Я знаю, ти уже злишься",  
+"Хмм",  
+"Ну гаразд",  
+"Я просто хотів сказати",  
+"Твої бездонні очі",
+"Твої прекрасні губи",
+"Твоя чарівна посмішка",
+"Твоя неймовірна фігура",
+"Твоє добре і щире серце",
+"Твоя чуйна душа",
+"Твоя відвертість і чеснісь",
+"Все це щодня вражає мене",
+"Змушує хотіти повернутись",
+"До нашого діалогу",
+"Знову і знову", 
+"Зробила його місцем",
+"Де я відчуваю себе спокійно",
+"І я хочу",
+"Аби він нарешті вийшов за межі інтернету",
+"Ти неймовірна ❤️",
+"Ти особлива",
+"Ти неповторна",  
+"Ти красива настільки, що весь світ затихає, коли ти з’являєшся",
+"Твоя усмішка — мій улюблений витвір мистецтва",
+"Коли я бачу її, то мені знову хочеться жити",
+"Твоя доброта робить цей світ світлішим",
+"Ти щодня повертаєш мені віру в цей світ",
+"Віру, що в ньому ще є щось прекрасне",
+"І це прекрасне - ТИ",
+"Ти — моє натхнення, мій спокій і мій вогонь одночасно",
+"Твоя щирість — це те, за що я тебе ціную ще більше, ніж за красу",
+"Мені здавалось, такого не може бути",
+"Що всім завжди лише щось потрібно від мене",
+"Якась послуга, допомога чи просто вигода",
+"І лише ти своєю щирістю змінюєш мій світогляд",
+"Ти вмієш підтримати так, як не вміє ніхто інший",
+"Я втратив надію, що колись відчую ці почуття",
+"Віддуття потрібності",
+"Відчуття, що тебе кохають",
+"Відчуття, що тебе хочуть",
+"Я став залежним",
+"Залежним від твого голосу",
+"День не матиме жодного сенсу, якщо я не зможу його почути",
+"І навіть коли мовчиш, я відчуваю твою любов",
+"У світі мільйони людей, але ти — єдина така",
+"Я не вірив в долю, в те що бувають такі співпадіння",
+"Але наша зустріч доводить протилежне",
+"Не могло бути стільки співпадінь, якби не план когось вгорі",
+"Ти не просто особлива — ти неймовірна",
+"Кожен день з тобою — це маленьке життя, повне щастя",
+"Я не можу уявити собі ранок, в якому не буде тебе",
+"Тоді краще взагалі не прокидатись",
+"Адже життя не матиме жодного сенсу",
+"Ти — моя мрія, яка стала реальністю",
+"Хоч навіть у мріях я не міг бути таким щасливим, як зараз з тобою",
+"З тобою кожен звичайний день стає святом",
+"Ти зʼявилася — і перетворила моє життя на казку",
+"Я не знаю, що буде завтра, але я точно хочу, щоб там була ти",
+"І якби можна було вибирати знову — я б обрав тебе ще мільйон разів",
+"Це наш перший спільний місяць",
+"І це без жодного перебільшення",
+"Найщасливіший місяць за останні багато довгих років",
+"Може навіть за все життя",
+"Що було до цього моменту",
+"Тому що зараз воно розділилось на до і після",
+"02.06.2025",
+"Назавжди залишиться тим днем",
+"Коли я знайшов скарб",
+"На який навіть не міг розраховувати",
+"І кожен день тепер я хочу проводити з тобою",
+"Кожну годину",
+"Хвилину",
+"Секунду",
+"Я хочу віддати тобі",
+"Хочу повністю належати тобі",
+"Отак)",  
+"Спробуй натиснути кнопку знизу 💝"
+];
+
+let currentPage = 0;
+let isLastPage = false;
+
+function showMessage() {
+    $('.message').text(messages[currentPage]);
+    
+    isLastPage = currentPage === messages.length - 1;
+    
+    if (isLastPage) {
+        $('.next-button').show();
+        $('.bg_heart').css('cursor', 'default');
+    } else {
+        $('.next-button').hide();
+        $('.bg_heart').css('cursor', 'pointer');
+    }
+}
+
+$('.bg_heart').on('click', function() {
+    if (!isLastPage) {
+        currentPage++;
+        showMessage();
+    }
+});
+
+var love = setInterval(function() {
+    var r_num = Math.floor(Math.random() * 40) + 1;
+    var r_size = Math.floor(Math.random() * 65) + 10;
+    var r_left = Math.floor(Math.random() * 100) + 1;
+    var r_bg = Math.floor(Math.random() * 25) + 100;
+    var r_time = Math.floor(Math.random() * 5) + 5;
+    
+    $('.bg_heart').append("<div class='heart' style='width:" + r_size + "px;height:" + r_size + "px;left:" + r_left + "%;background:rgba(255," + (r_bg - 25) + "," + r_bg + ",1);animation:love " + r_time + "s ease'></div>");
+    
+    $('.bg_heart').append("<div class='heart' style='width:" + (r_size - 10) + "px;height:" + (r_size - 10) + "px;left:" + (r_left + r_num) + "%;background:rgba(255," + (r_bg - 25) + "," + (r_bg + 25) + ",1);animation:love " + (r_time + 5) + "s ease'></div>");
+    
+    $('.heart').each(function() {
+        var top = parseFloat($(this).css("top"));
+        var width = parseFloat($(this).css("width"));
+        if (top <= -100 || width >= 150) {
+            $(this).remove();
+        }
+    });
+}, 500);
+
+showMessage();
+
+function clearMusicState() {
+    localStorage.removeItem('musicPlaying');
+    localStorage.removeItem('musicCurrentTime');
+}
+
+window.onload = function() {
+    clearMusicState(); 
+}
+
+function setupMusic() {
+    const music = document.getElementById('backgroundMusic');
+    
+    if (!localStorage.getItem('initialLoad')) {
+        clearMusicState();
+        localStorage.setItem('initialLoad', 'true');
+        music.currentTime = 0;
+    }
+
+    const isMusicPlaying = localStorage.getItem('musicPlaying') === 'true';
+    const musicCurrentTime = localStorage.getItem('musicCurrentTime') || 0;
+
+    if (isMusicPlaying) {
+        music.currentTime = parseFloat(musicCurrentTime);
+        music.play().catch(error => console.log('Playback failed', error));
+    }
+
+    music.addEventListener('play', () => {
+        localStorage.setItem('musicPlaying', 'true');
+    });
+
+    music.addEventListener('pause', () => {
+        localStorage.setItem('musicPlaying', 'false');
+    });
+
+    setInterval(() => {
+        localStorage.setItem('musicCurrentTime', music.currentTime);
+    }, 1000);
+
+    document.addEventListener('click', function startMusic() {
+        music.play().catch(error => {
+            console.log('Autoplay prevented', error);
+        });
+        document.removeEventListener('click', startMusic);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', setupMusic);
